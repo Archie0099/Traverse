@@ -2,32 +2,49 @@ import type { MazeGenerator, MazeResult } from "../../core/types";
 import type { RNG } from "../../core/util/rng";
 import { makeGrid } from "./util";
 
-/** Recursive division: carve the open field with walls that leave one gap each. */
+/**
+ * Recursive division. Walls are only placed on EVEN rows/columns and gaps only
+ * on ODD rows/columns, so a wall's gap always lines up with an (odd,odd) passage
+ * cell that no perpendicular wall can ever occupy. That keeps every gap usable
+ * and the maze fully connected (a naive single-cell-gap version disconnects the
+ * board because a child wall can seal a parent's gap).
+ */
 export const recursiveDivision: MazeGenerator = {
   id: "division",
   name: "Recursive division",
   generate(rows: number, cols: number, rng: RNG): MazeResult {
     const walls = makeGrid(rows, cols, () => false);
+    const evens = (lo: number, hi: number): number[] => {
+      const a: number[] = [];
+      for (let x = lo; x <= hi; x++) if (x % 2 === 0) a.push(x);
+      return a;
+    };
+    const odds = (lo: number, hi: number): number[] => {
+      const a: number[] = [];
+      for (let x = lo; x <= hi; x++) if (x % 2 === 1) a.push(x);
+      return a;
+    };
     const divide = (r1: number, c1: number, r2: number, c2: number, depth: number): void => {
+      if (depth > 400) return;
       const h = r2 - r1;
       const w = c2 - c1;
-      if ((h < 2 && w < 2) || depth > 200) return;
-      const horizontal = w < h ? true : h < w ? false : rng.next() < 0.5;
+      const rowWalls = evens(r1 + 1, r2 - 1); // interior even rows that can host a wall
+      const colWalls = evens(c1 + 1, c2 - 1);
+      const canH = h >= 2 && rowWalls.length > 0;
+      const canV = w >= 2 && colWalls.length > 0;
+      if (!canH && !canV) return;
+      const horizontal = canH && canV ? (w < h ? true : h < w ? false : rng.next() < 0.5) : canH;
       if (horizontal) {
-        const rowsAvail: number[] = [];
-        for (let r = r1 + 1; r <= r2 - 1; r++) rowsAvail.push(r);
-        if (!rowsAvail.length) return;
-        const wr = rowsAvail[rng.int(rowsAvail.length)];
-        const gap = c1 + rng.int(c2 - c1 + 1);
+        const wr = rowWalls[rng.int(rowWalls.length)];
+        const gapCols = odds(c1, c2);
+        const gap = gapCols.length ? gapCols[rng.int(gapCols.length)] : c1;
         for (let c = c1; c <= c2; c++) if (c !== gap) walls[wr][c] = true;
         divide(r1, c1, wr - 1, c2, depth + 1);
         divide(wr + 1, c1, r2, c2, depth + 1);
       } else {
-        const colsAvail: number[] = [];
-        for (let c = c1 + 1; c <= c2 - 1; c++) colsAvail.push(c);
-        if (!colsAvail.length) return;
-        const wc = colsAvail[rng.int(colsAvail.length)];
-        const gap = r1 + rng.int(r2 - r1 + 1);
+        const wc = colWalls[rng.int(colWalls.length)];
+        const gapRows = odds(r1, r2);
+        const gap = gapRows.length ? gapRows[rng.int(gapRows.length)] : r1;
         for (let r = r1; r <= r2; r++) if (r !== gap) walls[r][wc] = true;
         divide(r1, c1, r2, wc - 1, depth + 1);
         divide(r1, wc + 1, r2, c2, depth + 1);

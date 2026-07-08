@@ -110,7 +110,9 @@ export class Player {
     c.prepare();
     if (c.isComplete()) return;
     c.stepForward(1, this.now(), true);
-    this.requestRender();
+    // if this step completed the run, keep rendering long enough for the confirm
+    // sweep / celebration to finish instead of freezing mid-animation
+    this.requestRender(c.isComplete() ? 1600 : 450);
   }
 
   reset(): void {

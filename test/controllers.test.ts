@@ -34,6 +34,20 @@ describe("race winner", () => {
   });
 });
 
+describe("sort invalidate", () => {
+  it("resets cursor and total so the scrubber has no stale state", () => {
+    const c = new SortController();
+    c.loadState(20, 5, "bubble", "bubble", false);
+    c.prepare();
+    c.seekEnd(performance.now());
+    expect(c.total).toBeGreaterThan(0);
+    expect(c.cursor).toBe(c.total);
+    c.invalidate();
+    expect(c.cursor).toBe(0);
+    expect(c.total).toBe(0);
+  });
+});
+
 describe("path grid auto-fit", () => {
   it("unlocks fixed dimensions so the viewport can refit", () => {
     const c = new PathController();

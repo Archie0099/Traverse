@@ -115,6 +115,8 @@ export class SortController implements Controller {
   invalidate(): void {
     this.dirty = true;
     this.tracks = [];
+    this._cursor = 0;
+    this._total = 0;
   }
   shuffle(): void {
     this.seed = randomSeed();

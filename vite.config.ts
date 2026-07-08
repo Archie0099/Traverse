@@ -14,7 +14,7 @@ export default defineConfig({
   build: {
     target: "es2022",
     outDir: "dist",
-    sourcemap: true,
+    sourcemap: false,
   },
   plugins: [
     {
@@ -29,7 +29,7 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "apple-touch-icon.png"],
       manifest: {
-        name: "Traverse - Algorithm Visualizer",
+        name: "Traverse — Algorithm Visualizer",
         short_name: "Traverse",
         description:
           "Interactive pathfinding & sorting algorithm visualizer with a guided learning mode.",

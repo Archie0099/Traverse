@@ -71,6 +71,7 @@ let tutBackBtn: HTMLButtonElement;
 let tutNextBtn: HTMLButtonElement;
 let currentTut: Tutorial | null = null;
 let stepIdx = 0;
+let tutPinnedPath = false; // did the current tutorial pin the path grid via loadPath?
 
 /* ===== player ===== */
 const player = new Player({
@@ -701,7 +702,7 @@ function applyFromURL(): "path" | "sort" {
   if (THEMES.includes(parsed.theme)) store.set({ theme: parsed.theme });
   if (parsed.mode === "path" && parsed.path) {
     const pa = parsed.path;
-    if (PATH_BY_ID[pa.algo] && pa.rows > 0 && pa.cols > 0 && pa.rows <= 80 && pa.cols <= 120) {
+    if (PATH_BY_ID[pa.algo] && pa.rows >= 6 && pa.rows <= 40 && pa.cols >= 8 && pa.cols <= 60) {
       const decoded = share.decodeBoard(pa.board, pa.rows, pa.cols);
       if (decoded) {
         // validate start/end from the (possibly tampered) link; fall back to defaults
@@ -739,6 +740,7 @@ const director: Director = {
     if (!store.get().learn) setLearn(true);
   },
   loadPath(o): void {
+    tutPinnedPath = true;
     path.loadBoard(
       o.rows,
       o.cols,
@@ -780,6 +782,7 @@ function closeGuide(): void {
 function startTutorial(t: Tutorial): void {
   currentTut = t;
   stepIdx = 0;
+  tutPinnedPath = false;
   closeGuide();
   tutPanel.classList.remove("hidden");
   showStep();
@@ -812,8 +815,10 @@ function exitTutorial(): void {
   currentTut = null;
   tutPanel.classList.add("hidden");
   player.pause();
-  // a tutorial pins the grid to a fixed size; re-enable viewport auto-fit on the way out
-  path.unlockDims();
+  // only restore viewport auto-fit if THIS tutorial pinned the grid; a sort tutorial
+  // must not discard a board pinned by a shared link
+  if (tutPinnedPath) path.unlockDims();
+  tutPinnedPath = false;
 }
 
 /* ===== pointer (grid painting) ===== */
@@ -884,12 +889,21 @@ function wireGrid(): void {
 function wireKeys(): void {
   window.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    // while the Guide modal is open, isolate it: Escape closes it, other keys do nothing
+    if (!tutBackdrop.classList.contains("hidden")) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeGuide();
+      }
+      return;
+    }
     const tag = (e.target as HTMLElement | null)?.tagName ?? "";
     const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
     const k = e.key;
     if (k === " " || k === "Spacebar") {
       if (tag === "BUTTON" || typing) return;
       e.preventDefault();
+      if (e.repeat) return; // ignore key-repeat so holding Space doesn't spam play/pause
       player.toggle();
       return;
     }
